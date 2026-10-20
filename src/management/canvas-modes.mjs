@@ -92,6 +92,48 @@ function canvasOption(factory, value, defaultSelected = false, selected = false)
   return option;
 }
 
+// Group membership is many-to-many. Merge only identical complete membership
+// sets for presentation; keep every underlying identity available to management.
+// Comparing visible cards would incorrectly merge two partly filtered groups.
+function canvasGroupViews(groups = []) {
+  const views = new Map();
+  const generatedRecipe = group => (group.activeProfiles || []).some(profile => profile.ownsGroup === true);
+  const priority = group => generatedRecipe(group) ? 2 : group.activeProfiles?.length ? 0 : 1;
+  for (const group of groups) {
+    const ids = [...new Set(group.memberProgramIds || [])].sort();
+    if (!ids.length) continue;
+    const key = JSON.stringify(ids);
+    if (!views.has(key)) views.set(key, { groups: [], memberProgramIds: ids });
+    views.get(key).groups.push(group);
+  }
+  return [...views.values()].map(view => {
+    view.groups.sort((a, b) => priority(a) - priority(b) || String(a.id).localeCompare(String(b.id)));
+    const group = view.groups[0], names = [], recipes = [];
+    for (const item of view.groups) {
+      const name = localizedText(item.title, item.origin?.id || item.id);
+      (generatedRecipe(item) && !generatedRecipe(group) ? recipes : names).push(name);
+      for (const profile of item.activeProfiles || []) recipes.push(localizedText(profile.title, profile.id || profile.profileId));
+    }
+    const recipeNames = [...new Set(recipes)].filter(name => name && !names.includes(name));
+    return { ...group, displayGroupIds: view.groups.map(item => item.id), memberProgramIds: view.memberProgramIds,
+      displayTitle: [...new Set(names)].join(' · ') + (recipeNames.length ? ' · ⚡ ' + recipeNames.join(' · ') : '') };
+  }).sort((a, b) => String(a.id).localeCompare(String(b.id)));
+}
+
+function canvasGroupHeaderY(headers, x, y, width, height) {
+  const intersects = candidate => headers.some(rect => x < rect.x + rect.width + 8 && x + width + 8 > rect.x
+    && candidate < rect.y + rect.height + 8 && candidate + height + 8 > rect.y);
+  while (intersects(y)) y -= height + 12;
+  headers.push({ x, y, width, height });
+  return y;
+}
+
+function canvasGroupInput(group) {
+  // Active profile labels are derived by the server, never editable group state.
+  const { activeProfiles, ...input } = group;
+  return input;
+}
+
 function refreshCanvasBindings(root) {
   for (const element of [root, ...(root.querySelectorAll?.('*') || [])]) {
     const text = canvasTextBindings.get(element);
@@ -3315,13 +3357,14 @@ export class CanvasModesController {
     if (!sel) return;
     const currentVal = sel.value;
     setCanvasHtml(sel, () => ('<option value="all" data-i18n="🌐 全局全部模块">' + t('🌐 全局全部模块') + '</option>'));
-    for (const g of this.data.groups || []) {
+    const groups = canvasGroupViews(this.data.groups || []);
+    for (const g of groups) {
       const opt = document.createElement('option');
       opt.value = g.id;
-      setCanvasText(opt, () => (`📁 ${g.title || g.id} (${(g.memberProgramIds || []).length})`));
+      setCanvasText(opt, () => (`📁 ${g.displayTitle} (${g.memberProgramIds.length})`));
       sel.append(opt);
     }
-    sel.value = [...sel.options].some(option => option.value === currentVal) ? currentVal : 'all';
+    sel.value = groups.find(group => group.displayGroupIds.includes(currentVal))?.id || 'all';
     this.groupFilter = sel.value;
   }
 
@@ -5861,14 +5904,14 @@ export class CanvasModesController {
 
   layoutClustered(programs = this.filteredPrograms(), mode = this.mode) {
     if (!programs || !programs.length) return false;
-    const groups = (this.data.groups || []).filter(g => (g.memberProgramIds || []).some(id => programs.some(p => p.programId === id)));
+    const groups = canvasGroupViews(this.data.groups || []).filter(g => g.memberProgramIds.some(id => programs.some(p => p.programId === id)));
     if (!groups.length) return false;
 
     // Pass 1: 组内聚类
     const clusters = [];
     const assignedIds = new Set();
     groups.forEach(g => {
-      const members = programs.filter(p => (g.memberProgramIds || []).includes(p.programId));
+      const members = programs.filter(p => g.memberProgramIds.includes(p.programId) && !assignedIds.has(p.programId));
       if (members.length > 0) {
         clusters.push({ kind: 'group', id: g.id, title: g.title, programs: members });
         members.forEach(m => assignedIds.add(m.programId));
@@ -5971,12 +6014,13 @@ export class CanvasModesController {
     container.classList.remove('hidden');
 
     if (this.groupFilter !== 'all') return;
-    const groups = this.data.groups || [];
+    const groups = canvasGroupViews(this.data.groups || []);
     if (!groups.length) return;
 
     const programs = this.filteredPrograms() || [];
 
-    for (const group of groups) {
+    const headers = [];
+    for (const [groupIndex, group] of groups.entries()) {
       const members = programs.filter(p => (group.memberProgramIds || []).includes(p.programId));
       if (!members.length) continue;
 
@@ -6010,11 +6054,14 @@ export class CanvasModesController {
 
       const padX = 42, padY = 36, headerH = 38;
       const boxX = minX - padX;
-      const boxY = minY - padY - headerH;
+      const baseBoxY = minY - padY - headerH;
       const boxW = (maxX - minX) + padX * 2;
-      const boxH = (maxY - minY) + padY * 2 + headerH;
+      // Distinct or partly overlapping groups may still share a bounding box.
+      // Stack their headers above the cards, without moving any module card.
+      const boxY = canvasGroupHeaderY(headers, boxX + 8, baseBoxY + 8, boxW - 16, headerH - 8) - 8;
+      const boxH = (maxY - minY) + padY * 2 + headerH + baseBoxY - boxY;
 
-      const isSelected = this.selectedGroupId === group.id;
+      const isSelected = group.displayGroupIds.includes(this.selectedGroupId);
 
       const gBox = svgEl('g', {
         class: `cmn-group-container ${isSelected ? 'selected' : ''}`,
@@ -6057,9 +6104,17 @@ export class CanvasModesController {
         fill: isSelected ? '#ffffff' : '#00d2b4',
         'font-size': '12',
         'font-weight': '700',
-        'font-family': 'var(--sans)'
+        'font-family': 'var(--sans)',
+        'clip-path': `url(#cmn-group-title-${groupIndex})`
       });
-      setCanvasText(titleText, () => (`📦 ${group.title || group.id} (${t('{count} 个成员', { count: members.length })})`));
+      const fullTitle = () => (`📦 ${group.displayTitle} (${t('{count} 个成员', { count: members.length })})`);
+      setCanvasText(titleText, fullTitle);
+      const titleClip = svgEl('clipPath', { id: `cmn-group-title-${groupIndex}` });
+      titleClip.append(svgEl('rect', { x: String(boxX + 22), y: String(boxY + 8), width: String(Math.max(24, boxW - 170)), height: String(headerH - 8) }));
+      gBox.append(titleClip);
+      const tooltip = svgEl('title', {});
+      setCanvasText(tooltip, fullTitle);
+      headerG.append(tooltip);
 
       const manageBadge = svgEl('text', {
         x: String(boxX + boxW - 22),
@@ -6074,7 +6129,7 @@ export class CanvasModesController {
       headerG.append(headerBg, titleText, manageBadge);
       headerG.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.selectGroup(group.id);
+        this.selectGroup(group.displayGroupIds.includes(this.selectedGroupId) ? this.selectedGroupId : group.id);
       });
 
       gBox.append(headerG);
@@ -7139,6 +7194,7 @@ export class CanvasModesController {
 
     this.updateGroupActionButtons();
     this.updateModeUI();
+    this.updateGroupFilterOptions();
     void this.updateProfileSwitcher();
 
     this.render();
@@ -7674,14 +7730,14 @@ export class CanvasModesController {
         await fetch('/manage/api/groups/save', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-Management-Token': window.hubCanvas?.state?.data?.csrfToken || '' },
-          body: JSON.stringify({ group: g, expectedRevision: g.revision })
+          body: JSON.stringify({ group: canvasGroupInput(g), expectedRevision: g.revision })
         });
       } else if (g.id !== groupId && isMember) {
         g.memberProgramIds = (g.memberProgramIds || []).filter(id => id !== programId);
         await fetch('/manage/api/groups/save', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-Management-Token': window.hubCanvas?.state?.data?.csrfToken || '' },
-          body: JSON.stringify({ group: g, expectedRevision: g.revision })
+          body: JSON.stringify({ group: canvasGroupInput(g), expectedRevision: g.revision })
         });
       }
     }
@@ -10437,7 +10493,7 @@ export class CanvasModesController {
           'Content-Type': 'application/json',
           'X-Management-Token': window.hubCanvas?.state?.data?.csrfToken || ''
         },
-        body: JSON.stringify(group ? { group: { ...group, startupPlan: structuredClone(plan) }, expectedRevision: group.revision }
+        body: JSON.stringify(group ? { group: { ...canvasGroupInput(group), startupPlan: structuredClone(plan) }, expectedRevision: group.revision }
           : { plan, expectedRevision: plan.revision })
       });
       const result = await res.json();
