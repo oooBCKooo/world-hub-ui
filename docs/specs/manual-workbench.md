@@ -6,11 +6,11 @@
 
 管理操作沿用本机管理 API：查看状态、暂停／恢复主体、断开选定当前连接、编辑程序与桥 N:M 注记。注记不参与认证或寻址，程序运行状态仍未知。暂停作用于主体全部实例，断连作用于所选 connectionId；过期标识不能误断后来连接。
 
-手动通讯由浏览器自己的枢纽桥直连同一个 Hub 的 WebSocket。用户明确选择 bridge、可选 credential 与 token；实际 principal/session/features/limits 以 welcome 为准。管理 HTTP 不替其他桥发消息、订阅、ACK、回应或释放。连接路径从管理快照 transport.path 读取，不固定为 /bridge。
+手动通讯由浏览器自己的枢纽桥经本项目的固定目标代理连接同一个 Hub 的 WebSocket。用户明确选择 bridge、可选 credential 与 token；实际 principal/session/features/limits 以 welcome 为准。管理 HTTP 不替其他桥发消息、订阅、ACK、回应或释放。连接路径从管理快照 transport.path 读取，不固定为 /bridge。
 
 bridge 必填，credential 可留空。填写的标识须为 1–64 个字符，以小写 ASCII 字母或数字开头，其后允许小写字母、数字、点、下划线和连字符。连接表单先由浏览器提示格式错误，浏览器桥和 Hub 仍各自执行身份校验。
 
-随仓可信本机参考配置提供 ui.manual 凭据主体，允许四条连接和任意合法主题，未配置 token 时属于未认证的本机样例。正式接线可收窄主题并配置 token，界面显示实际认证情况。这个参考接线项用于手动工作台，不改变已有主体的权限，也不限制使用凭据的程序形态。单桥模式同名会接管旧连接；凭据模式可多个实例。
+Hub 默认拒绝未配置的枢纽桥，不预置界面专用主体。使用工作台前，由部署方在 Hub 配置中明确登记桥身份或凭据主体、token、主题权限及连接数量；界面只使用填写的凭据，不自动新增身份或扩大 ACL。单桥模式同名会接管旧连接；凭据模式在 Hub 授权的数量内允许多个实例。具体字段见 [Hub 接入契约](https://github.com/oooBCKooo/world-hub/blob/main/docs/specs/protocol.md)。
 
 ## 用户可以操作的功能
 
@@ -36,10 +36,10 @@ bridge 必填，credential 可留空。填写的标识须为 1–64 个字符，
 
 连接、回执及有完成含义的文件操作有明确等待和断连处理；持续订阅可以继续等待。关闭工作台弹窗不必断开正在使用的桥，显式断开结束未决操作。没有自动重试、自动 ACK、自动释放或永久保存游标。
 
-凭据 token 不进入本地持久存储或导出日志。管理静态模块按精确路径提供，沿用回环、Host、Origin 校验；CSP 允许自身脚本和当前 Hub 的 WebSocket，没有开放任意远端连接。用户文本、原始消息与错误都以文本显示，不执行载荷。
+凭据 token 不进入本地持久存储或导出日志。管理静态模块按精确路径提供，核对回环、Host、Origin 与 Fetch Metadata；CSP 允许自身脚本和本机 UI 的 WebSocket 代理，没有开放任意远端连接。用户文本、原始消息与错误都以文本显示，不执行载荷。
 
 ## 验证与范围
 
-使用 `npm start` 后打开 `/manage` 并点击“通讯工作台”；隔离演示用 `npm run demo:management`。自动客户端与管理回归纳入 `npm test`。真实浏览器点击、实际 WebSocket 自动测试和 DOM 模型检查分别记录，不能相互替代。
+先单独启动 Hub，再运行 `npm start -- --hub http://127.0.0.1:8790 --open`，打开终端输出的界面地址并点击“通讯工作台”；端口和通信路径以你的 Hub 配置为准。`npm test` 检查本项目的界面和代理；设置 `WORLD_HUB_ENTRY` 后还会运行真实独立 Hub CLI 联调，见 [README](../../README.md)。真实浏览器点击、实际 WebSocket 自动测试和 DOM 模型检查分别记录，不能相互替代。
 
-浏览器文件便利层单文件最大 64 MiB，不扩大 Hub 默认对象容量。草稿、连续收帧和过期快照的操作规则见[操作体验](operations.md)。本工作台不承诺公网管理、多租户隔离、业务正确性或任意容量文件。
+浏览器文件便利层单文件最大 64 MiB，不扩大 Hub 默认对象容量。界面与管理状态的边界见[操作约定](../interface-ux.md)。本工作台不承诺公网管理、多租户隔离、业务正确性或任意容量文件。

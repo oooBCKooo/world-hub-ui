@@ -4,6 +4,8 @@
 
 World Hub 的独立界面项目。提供通讯拓扑、手动工作台、模块本体／配置／数据管理与社区页面。Hub 本身可独立运行，其他程序通过 HTTP／WebSocket 契约使用它，不需要安装或打开本项目。
 
+[Hub 项目](https://github.com/oooBCKooo/world-hub) · [界面操作约定](docs/interface-ux.md) · [手动通讯工作台](docs/specs/manual-workbench.md)
+
 ## 启动
 
 需要 Node.js 22.4 或以上，无第三方运行依赖。先按 World Hub 文档启动 Hub，再运行：

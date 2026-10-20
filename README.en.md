@@ -4,6 +4,8 @@
 
 An independent interface project for World Hub: communication topology, a manual bridge workbench, module body/configuration/data management, and community pages. World Hub runs independently. Programs can use its HTTP and WebSocket contracts without this interface.
 
+[Hub project](https://github.com/oooBCKooo/world-hub) · [Interface conventions](docs/interface-ux.md#english) · [Manual workbench](docs/specs/manual-workbench.md)
+
 ## Start
 
 Requires Node.js 22.4 or later. No third-party runtime dependencies. Start World Hub separately, then run:
