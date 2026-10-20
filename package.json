@@ -8,6 +8,8 @@
   "repository": { "type": "git", "url": "git+https://github.com/oooBCKooo/world-hub-ui.git" },
   "homepage": "https://github.com/oooBCKooo/world-hub-ui#readme",
   "bugs": { "url": "https://github.com/oooBCKooo/world-hub-ui/issues" },
+  "keywords": ["world-hub", "hub-bridge", "ui", "management", "websocket", "modules"],
+  "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org/" },
   "bin": { "world-hub-ui": "bin/world-hub-ui.mjs" },
   "exports": { ".": "./src/server.mjs", "./workshop-assets": "./src/workshop-assets.mjs" },
   "files": ["bin", "src", "tools/workshop/public", "README.md", "README.en.md", "LICENSE"],

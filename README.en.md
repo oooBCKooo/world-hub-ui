@@ -8,10 +8,11 @@ An independent interface project for World Hub: communication topology, a manual
 
 ## Start
 
-Requires Node.js 22.4 or later. No third-party runtime dependencies. Start World Hub separately, then run:
+Requires Node.js 22.4 or later. No third-party runtime dependencies. The independent `world-hub-ui` npm package does not bundle or automatically install `world-hub`. Start World Hub separately, then install and start the interface:
 
 ```sh
-node bin/world-hub-ui.mjs --hub http://127.0.0.1:8790 --open
+npm install -g world-hub-ui
+world-hub-ui --hub http://127.0.0.1:8790 --open
 ```
 
 The terminal prints the actual UI URL. Use `--port 9000` for a fixed UI port; the default is an available system port. The UI reads the Hub's declared WebSocket path. Use `--bridge-path /bridge` explicitly when starting before the Hub or using a custom path.
@@ -40,7 +41,11 @@ Serve the frontend and Workshop API on the same origin to preserve cookie and CS
 
 ## Develop and verify
 
+To run from source:
+
 ```sh
+npm ci --ignore-scripts
+node bin/world-hub-ui.mjs --hub http://127.0.0.1:8790 --open
 npm test
 npm run check
 ```

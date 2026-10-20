@@ -8,10 +8,11 @@ World Hub 的独立界面项目。提供通讯拓扑、手动工作台、模块�
 
 ## 启动
 
-需要 Node.js 22.4 或以上，无第三方运行依赖。先按 World Hub 文档启动 Hub，再运行：
+需要 Node.js 22.4 或以上，无第三方运行依赖。界面使用独立的 npm 包 `world-hub-ui`，不包含或自动安装 `world-hub`。先按 World Hub 文档启动 Hub，再安装并启动界面：
 
 ```powershell
-node bin/world-hub-ui.mjs --hub http://127.0.0.1:8790 --open
+npm install -g world-hub-ui
+world-hub-ui --hub http://127.0.0.1:8790 --open
 ```
 
 终端会打印实际界面地址。`--port 9000` 指定界面端口；默认由系统选择。UI 会读取 Hub 声明的 WebSocket 路径，Hub 暂未启动或使用特殊路径时可明确指定 `--bridge-path /bridge`。
@@ -40,7 +41,11 @@ import { workshopAssetsRoot } from 'world-hub-ui/workshop-assets';
 
 ## 开发与验证
 
+从源码运行：
+
 ```powershell
+npm ci --ignore-scripts
+node bin/world-hub-ui.mjs --hub http://127.0.0.1:8790 --open
 npm test
 npm run check
 ```
