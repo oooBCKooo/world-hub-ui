@@ -6,6 +6,10 @@ World Hub 的独立界面项目。提供通讯拓扑、手动工作台、模块�
 
 [Hub 项目](https://github.com/oooBCKooo/world-hub) · [界面操作约定](docs/interface-ux.md) · [手动通讯工作台](docs/specs/manual-workbench.md)
 
+## 0.1.1 更新
+
+配置方案使用顶部浮层管理：全局方案单选，局部方案可勾选叠加；冲突时进入审阅，不自动取消其他局部配置。修复配置与分组标题重叠、重复筛选和自动排版，并保留原组身份。建议与 World Hub 0.22.0 一起使用。
+
 ## 启动
 
 需要 Node.js 22.4 或以上，无第三方运行依赖。界面使用独立的 npm 包 `world-hub-ui`，不包含或自动安装 `world-hub`。先按 World Hub 文档启动 Hub，再安装并启动界面：

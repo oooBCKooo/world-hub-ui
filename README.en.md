@@ -6,6 +6,10 @@ An independent interface project for World Hub: communication topology, a manual
 
 [Hub project](https://github.com/oooBCKooo/world-hub) · [Interface conventions](docs/interface-ux.md#english) · [Manual workbench](docs/specs/manual-workbench.md)
 
+## Changes in 0.1.1
+
+The profile popover supports one global selection and multiple local profiles. Conflicts open the existing review instead of silently deactivating other local configurations. Duplicate group headers, filters and layout are corrected while original group identities remain available. Recommended with World Hub 0.22.0.
+
 ## Start
 
 Requires Node.js 22.4 or later. No third-party runtime dependencies. The independent `world-hub-ui` npm package does not bundle or automatically install `world-hub`. Start World Hub separately, then install and start the interface:

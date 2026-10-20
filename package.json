@@ -1,19 +1,48 @@
 {
   "name": "world-hub-ui",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Independent browser management and community interfaces for World Hub.",
   "type": "module",
   "license": "MIT",
   "author": "oooBCKooo",
-  "repository": { "type": "git", "url": "git+https://github.com/oooBCKooo/world-hub-ui.git" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oooBCKooo/world-hub-ui.git"
+  },
   "homepage": "https://github.com/oooBCKooo/world-hub-ui#readme",
-  "bugs": { "url": "https://github.com/oooBCKooo/world-hub-ui/issues" },
-  "keywords": ["world-hub", "hub-bridge", "ui", "management", "websocket", "modules"],
-  "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org/" },
-  "bin": { "world-hub-ui": "bin/world-hub-ui.mjs" },
-  "exports": { ".": "./src/server.mjs", "./workshop-assets": "./src/workshop-assets.mjs" },
-  "files": ["bin", "src", "tools/workshop/public", "README.md", "README.en.md", "LICENSE"],
-  "engines": { "node": ">=22.4.0" },
+  "bugs": {
+    "url": "https://github.com/oooBCKooo/world-hub-ui/issues"
+  },
+  "keywords": [
+    "world-hub",
+    "hub-bridge",
+    "ui",
+    "management",
+    "websocket",
+    "modules"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "bin": {
+    "world-hub-ui": "bin/world-hub-ui.mjs"
+  },
+  "exports": {
+    ".": "./src/server.mjs",
+    "./workshop-assets": "./src/workshop-assets.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "tools/workshop/public",
+    "README.md",
+    "README.en.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.4.0"
+  },
   "scripts": {
     "start": "node bin/world-hub-ui.mjs",
     "test": "node --test --test-timeout=30000 tests/**/*.test.mjs",

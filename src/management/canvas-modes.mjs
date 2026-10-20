@@ -92,6 +92,48 @@ function canvasOption(factory, value, defaultSelected = false, selected = false)
   return option;
 }
 
+// Group membership is many-to-many. Merge only identical complete membership
+// sets for presentation; keep every underlying identity available to management.
+// Comparing visible cards would incorrectly merge two partly filtered groups.
+function canvasGroupViews(groups = []) {
+  const views = new Map();
+  const generatedRecipe = group => (group.activeProfiles || []).some(profile => profile.ownsGroup === true);
+  const priority = group => generatedRecipe(group) ? 2 : group.activeProfiles?.length ? 0 : 1;
+  for (const group of groups) {
+    const ids = [...new Set(group.memberProgramIds || [])].sort();
+    if (!ids.length) continue;
+    const key = JSON.stringify(ids);
+    if (!views.has(key)) views.set(key, { groups: [], memberProgramIds: ids });
+    views.get(key).groups.push(group);
+  }
+  return [...views.values()].map(view => {
+    view.groups.sort((a, b) => priority(a) - priority(b) || String(a.id).localeCompare(String(b.id)));
+    const group = view.groups[0], names = [], recipes = [];
+    for (const item of view.groups) {
+      const name = localizedText(item.title, item.origin?.id || item.id);
+      (generatedRecipe(item) && !generatedRecipe(group) ? recipes : names).push(name);
+      for (const profile of item.activeProfiles || []) recipes.push(localizedText(profile.title, profile.id || profile.profileId));
+    }
+    const recipeNames = [...new Set(recipes)].filter(name => name && !names.includes(name));
+    return { ...group, displayGroupIds: view.groups.map(item => item.id), memberProgramIds: view.memberProgramIds,
+      displayTitle: [...new Set(names)].join(' · ') + (recipeNames.length ? ' · ⚡ ' + recipeNames.join(' · ') : '') };
+  }).sort((a, b) => String(a.id).localeCompare(String(b.id)));
+}
+
+function canvasGroupHeaderY(headers, x, y, width, height) {
+  const intersects = candidate => headers.some(rect => x < rect.x + rect.width + 8 && x + width + 8 > rect.x
+    && candidate < rect.y + rect.height + 8 && candidate + height + 8 > rect.y);
+  while (intersects(y)) y -= height + 12;
+  headers.push({ x, y, width, height });
+  return y;
+}
+
+function canvasGroupInput(group) {
+  // Active profile labels are derived by the server, never editable group state.
+  const { activeProfiles, ...input } = group;
+  return input;
+}
+
 function refreshCanvasBindings(root) {
   for (const element of [root, ...(root.querySelectorAll?.('*') || [])]) {
     const text = canvasTextBindings.get(element);
@@ -456,8 +498,7 @@ export class CanvasModesController {
       .detached-hud-panel .hud-profile-select,
       .detached-hud-panel .hud-btn,
       .detached-hud-panel #canvas-language,
-      .detached-hud-panel #hud-group-filter,
-      .detached-hud-panel #hud-profile-switcher {
+      .detached-hud-panel #hud-group-filter {
         appearance: none !important;
         -webkit-appearance: none !important;
         -moz-appearance: none !important;
@@ -488,6 +529,243 @@ export class CanvasModesController {
       }
       .detached-hud-panel select option {
         background: #0d1522;
+        color: #fff;
+      }
+
+      /* 配置方案多选生效浮层组件 (Popover) */
+      .hud-profile-switcher-wrap {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+      }
+      .hud-profile-trigger-btn {
+        appearance: none !important;
+        -webkit-appearance: none !important;
+        background: rgba(0, 210, 180, 0.08) !important;
+        border: 1px solid rgba(0, 210, 180, 0.3) !important;
+        border-radius: 6px !important;
+        padding: 3px 8px !important;
+        color: #e0f2fe !important;
+        font-size: 11px !important;
+        font-weight: 600 !important;
+        cursor: pointer !important;
+        outline: none !important;
+        transition: all 0.15s ease !important;
+        max-width: 260px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 5px !important;
+      }
+      .hud-profile-trigger-btn:hover {
+        background: rgba(0, 210, 180, 0.18) !important;
+        border-color: rgba(0, 210, 180, 0.6) !important;
+        box-shadow: 0 0 10px rgba(0, 210, 180, 0.25) !important;
+        color: #fff !important;
+      }
+      .hud-profile-trigger-btn[aria-expanded="true"] {
+        background: rgba(0, 210, 180, 0.22) !important;
+        border-color: var(--teal) !important;
+        box-shadow: 0 0 12px var(--teal-glow) !important;
+        color: #fff !important;
+      }
+      .hud-profile-trigger-btn[aria-expanded="true"] .hud-profile-chevron {
+        transform: rotate(180deg);
+      }
+      .hud-profile-pill-text {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+        text-align: left;
+      }
+      .hud-profile-chevron {
+        flex-shrink: 0;
+        color: var(--teal);
+        transition: transform 0.2s ease;
+      }
+      .hud-profile-popover {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        width: 350px;
+        background: rgba(13, 21, 34, 0.97);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(0, 210, 180, 0.35);
+        border-radius: 10px;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75), 0 0 18px rgba(0, 210, 180, 0.18);
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        animation: hppFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      @keyframes hppFadeIn {
+        from { opacity: 0; transform: translateY(-6px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .hpp-header {
+        padding: 10px 12px 8px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .hpp-title-box {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 3px;
+      }
+      .hpp-title {
+        font-size: 12px;
+        font-weight: 700;
+        color: #fff;
+      }
+      .hpp-badge {
+        font-size: 10px;
+        font-weight: 700;
+        background: rgba(0, 210, 180, 0.15);
+        color: var(--teal);
+        border: 1px solid rgba(0, 210, 180, 0.4);
+        border-radius: 10px;
+        padding: 1px 7px;
+      }
+      .hpp-subtitle {
+        font-size: 10px;
+        color: #94a3b8;
+        line-height: 1.3;
+      }
+      .hpp-body {
+        max-height: 380px;
+        overflow-y: auto;
+        padding: 8px 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .hpp-section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 2px 2px 5px;
+      }
+      .hpp-section-title {
+        font-size: 11px;
+        font-weight: 700;
+        color: #cbd5e1;
+      }
+      .hpp-section-hint {
+        font-size: 9.5px;
+        color: #64748b;
+      }
+      .hpp-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .hpp-empty {
+        padding: 8px 10px;
+        font-size: 10.5px;
+        color: #64748b;
+        font-style: italic;
+        text-align: center;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 6px;
+      }
+      .hpp-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        cursor: pointer;
+        transition: all 0.12s ease;
+        user-select: none;
+      }
+      .hpp-item:hover {
+        background: rgba(0, 210, 180, 0.08);
+        border-color: rgba(0, 210, 180, 0.25);
+      }
+      .hpp-item.active {
+        background: rgba(0, 210, 180, 0.12);
+        border-color: rgba(0, 210, 180, 0.4);
+      }
+      .hpp-item input[type="radio"],
+      .hpp-item input[type="checkbox"] {
+        cursor: pointer;
+        accent-color: var(--teal, #00d2b4);
+        margin: 0;
+        flex-shrink: 0;
+        width: 14px;
+        height: 14px;
+      }
+      .hpp-item-info {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+      }
+      .hpp-item-title {
+        font-size: 11px;
+        font-weight: 600;
+        color: #e2e8f0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .hpp-item-desc {
+        font-size: 9.5px;
+        color: #94a3b8;
+        font-family: var(--mono);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .hpp-item-badge {
+        font-size: 9.5px;
+        font-weight: 600;
+        padding: 1px 6px;
+        border-radius: 4px;
+        flex-shrink: 0;
+        background: rgba(255, 255, 255, 0.05);
+        color: #64748b;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .hpp-item-badge.active {
+        background: rgba(16, 185, 129, 0.18);
+        color: #34d399;
+        border-color: rgba(16, 185, 129, 0.4);
+      }
+      .hpp-footer {
+        padding: 8px 10px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        background: rgba(0, 0, 0, 0.25);
+      }
+      .hpp-action-btn {
+        appearance: none;
+        -webkit-appearance: none;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 6px;
+        color: #94a3b8;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 5px 8px;
+        text-align: left;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .hpp-action-btn:hover {
+        background: rgba(0, 210, 180, 0.12);
+        border-color: rgba(0, 210, 180, 0.35);
         color: #fff;
       }
 
@@ -1654,11 +1932,42 @@ export class CanvasModesController {
       setCanvasAttribute(groupPanel, 'aria-label', () => t('本地配置范围选择栏'));
       groupPanel.setAttribute('data-i18n-aria-label', '本地配置范围选择栏');
       setCanvasHtml(groupPanel, () => (`
-        <div class="hud-profile-switcher-wrap" id="hud-profile-switcher-wrap" title="选择或切换生效的配置方案" data-i18n-title="选择或切换生效的配置方案">
-          <label class="sr-only" for="hud-profile-switcher" data-i18n="配置切换">配置切换</label>
-          <select class="hud-group-select hud-profile-select" id="hud-profile-switcher" aria-label="切换生效配置" data-i18n-aria-label="切换生效配置">
-            <option value="" data-i18n="📋 默认运行配置">📋 默认运行配置</option>
-          </select>
+        <div class="hud-profile-switcher-wrap" id="hud-profile-switcher-wrap" title="管理当前生效的全局与局部配置方案" data-i18n-title="管理当前生效的全局与局部配置方案">
+          <button type="button" class="hud-profile-trigger-btn" id="hud-profile-switcher" aria-haspopup="dialog" aria-expanded="false" aria-controls="hud-profile-popover" aria-label="管理当前生效配置" data-i18n-aria-label="管理当前生效配置">
+            <span class="hud-profile-pill-text" id="hud-profile-pill-text" data-i18n="📋 默认运行配置 (无保存方案)">📋 默认运行配置 (无保存方案)</span>
+            <svg class="hud-profile-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="hud-profile-popover" id="hud-profile-popover" role="dialog" aria-modal="false" aria-label="配置方案生效管理" data-i18n-aria-label="配置方案生效管理" style="display: none;">
+            <div class="hpp-header">
+              <div class="hpp-title-box">
+                <span class="hpp-title" data-i18n="配置方案生效管理">配置方案生效管理</span>
+                <span class="hpp-badge" id="hpp-active-count">0 项生效</span>
+              </div>
+              <div class="hpp-subtitle" data-i18n="全局方案单选互斥 · 局部方案可多选勾选叠加生效">全局方案单选互斥 · 局部方案可多选勾选叠加生效</div>
+            </div>
+            <div class="hpp-body">
+              <div class="hpp-section">
+                <div class="hpp-section-header">
+                  <span class="hpp-section-title" data-i18n="🌐 全局配置 (单选)">🌐 全局配置 (单选)</span>
+                  <span class="hpp-section-hint" data-i18n="整盘拓扑方案">整盘拓扑方案</span>
+                </div>
+                <div class="hpp-list" id="hpp-global-list"></div>
+              </div>
+              <div class="hpp-section">
+                <div class="hpp-section-header">
+                  <span class="hpp-section-title" data-i18n="📁 局部配置 (多选勾选)">📁 局部配置 (多选勾选)</span>
+                  <span class="hpp-section-hint" data-i18n="所选实例群方案，可叠加生效">所选实例群方案，可叠加生效</span>
+                </div>
+                <div class="hpp-list" id="hpp-local-list"></div>
+              </div>
+            </div>
+            <div class="hpp-footer">
+              <button type="button" class="hpp-action-btn" id="hpp-btn-capture" data-i18n="💾 另存当前画布为配置...">💾 另存当前画布为配置...</button>
+              <button type="button" class="hpp-action-btn" id="hpp-btn-console" data-i18n="⚙ 模块资源与配置管理...">⚙ 模块资源与配置管理...</button>
+            </div>
+          </div>
         </div>
         <div class="hud-divider-v"></div>
         <select class="hud-group-select" id="hud-group-filter" aria-label="本地配置范围筛选" data-i18n-aria-label="本地配置范围筛选">
@@ -2807,23 +3116,53 @@ export class CanvasModesController {
       this.render();
     });
 
-    $('hud-profile-switcher')?.addEventListener('change', async (e) => {
-      const val = e.target.value;
-      if (!val) return;
-      if (val === '__manage__') {
-        $('btn-resource-console')?.click();
-        void this.updateProfileSwitcher();
-        return;
-      }
-      if (val === '__capture__') {
+    const profileTrigger = $('hud-profile-switcher');
+    const profilePopover = $('hud-profile-popover');
+    if (profileTrigger && profilePopover) {
+      profileTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = profilePopover.style.display !== 'none';
+        if (isOpen) {
+          profilePopover.style.display = 'none';
+          profileTrigger.setAttribute('aria-expanded', 'false');
+        } else {
+          profilePopover.style.display = 'flex';
+          profileTrigger.setAttribute('aria-expanded', 'true');
+          void this.updateProfileSwitcher();
+        }
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!profilePopover || profilePopover.style.display === 'none') return;
+        if (!e.target.closest('#hud-profile-switcher-wrap')) {
+          profilePopover.style.display = 'none';
+          profileTrigger.setAttribute('aria-expanded', 'false');
+        }
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && profilePopover && profilePopover.style.display !== 'none') {
+          profilePopover.style.display = 'none';
+          profileTrigger.setAttribute('aria-expanded', 'false');
+          profileTrigger.focus();
+        }
+      });
+
+      $('hpp-btn-capture')?.addEventListener('click', () => {
+        profilePopover.style.display = 'none';
+        profileTrigger.setAttribute('aria-expanded', 'false');
         $('btn-resource-console')?.click();
         window.resourceConsole?.selectTab('configurations');
         window.resourceConsole?.toggleCapture?.(true);
-        void this.updateProfileSwitcher();
-        return;
-      }
-      await this.switchProfile(val);
-    });
+      });
+
+      $('hpp-btn-console')?.addEventListener('click', () => {
+        profilePopover.style.display = 'none';
+        profileTrigger.setAttribute('aria-expanded', 'false');
+        $('btn-resource-console')?.click();
+        window.resourceConsole?.selectTab('configurations');
+      });
+    }
 
     window.addEventListener('world-hub:resources-changed', () => {
       void this.updateProfileSwitcher();
@@ -3315,93 +3654,248 @@ export class CanvasModesController {
     if (!sel) return;
     const currentVal = sel.value;
     setCanvasHtml(sel, () => ('<option value="all" data-i18n="🌐 全局全部模块">' + t('🌐 全局全部模块') + '</option>'));
-    for (const g of this.data.groups || []) {
+    const groups = canvasGroupViews(this.data.groups || []);
+    for (const g of groups) {
       const opt = document.createElement('option');
       opt.value = g.id;
-      setCanvasText(opt, () => (`📁 ${g.title || g.id} (${(g.memberProgramIds || []).length})`));
+      setCanvasText(opt, () => (`📁 ${g.displayTitle} (${g.memberProgramIds.length})`));
       sel.append(opt);
     }
-    sel.value = [...sel.options].some(option => option.value === currentVal) ? currentVal : 'all';
+    sel.value = groups.find(group => group.displayGroupIds.includes(currentVal))?.id || 'all';
     this.groupFilter = sel.value;
   }
 
   async updateProfileSwitcher() {
-    const sel = $('hud-profile-switcher');
-    if (!sel) return;
+    const trigger = $('hud-profile-switcher');
+    if (!trigger) return;
+    const pillText = $('hud-profile-pill-text');
+    const activeCountBadge = $('hpp-active-count');
+    const globalList = $('hpp-global-list');
+    const localList = $('hpp-local-list');
+
+    const load = this.profileSwitcherLoad = (this.profileSwitcherLoad || 0) + 1;
     try {
-      const res = await fetch('/manage/api/resources');
+      const res = await fetch('/manage/api/resources', { signal: AbortSignal.timeout(30000) });
       if (!res.ok) return;
       const data = await res.json();
+      if (load !== this.profileSwitcherLoad) return;
       const profiles = data.profiles || [];
       const activeIds = data.activeProfileIds || [];
       this.resourceProfiles = profiles;
 
-      sel.replaceChildren();
-      if (!profiles.length) {
-        const defOpt = document.createElement('option');
-        defOpt.value = '';
-        setCanvasText(defOpt, () => t('📋 默认运行配置 (无保存方案)'));
-        sel.append(defOpt);
-      } else {
-        for (const p of profiles) {
-          const opt = document.createElement('option');
-          opt.value = p.profileId;
-          const isActive = p.active || activeIds.includes(p.profileId);
-          setCanvasText(opt, () => `${isActive ? '⚡ ' : '📋 '}${p.title || p.id} v${p.version}${isActive ? ` (${t('当前生效')})` : ''}`);
-          if (isActive) opt.selected = true;
-          sel.append(opt);
+      const activeProfiles = profiles.filter(p => p.active || activeIds.includes(p.profileId));
+      const activeCount = activeProfiles.length;
+      const globalProfiles = profiles.filter(p => p.scope === 'global');
+      const localProfiles = profiles.filter(p => p.scope === 'local');
+
+      const activeGlobal = activeProfiles.find(p => p.scope === 'global');
+      const activeLocals = activeProfiles.filter(p => p.scope === 'local');
+
+      // Update Pill summary text
+      if (pillText) {
+        if (activeGlobal && activeLocals.length > 0) {
+          setCanvasText(pillText, () => t('🎛 全局: {name} · {count}套局部生效', {
+            name: activeGlobal.title || activeGlobal.id,
+            count: activeLocals.length
+          }));
+        } else if (activeGlobal) {
+          setCanvasText(pillText, () => t('🎛 全局: {name}', {
+            name: activeGlobal.title || activeGlobal.id
+          }));
+        } else if (activeLocals.length > 0) {
+          setCanvasText(pillText, () => t('🎛 {count}套局部配置生效中', {
+            count: activeLocals.length
+          }));
+        } else {
+          setCanvasText(pillText, () => t('📋 默认运行配置 (无保存方案)'));
         }
       }
 
-      const divOpt = document.createElement('option');
-      divOpt.disabled = true;
-      divOpt.textContent = '──────────';
-      sel.append(divOpt);
+      if (activeCountBadge) {
+        setCanvasText(activeCountBadge, () => t('{count} 项生效', { count: activeCount }));
+      }
 
-      const captureOpt = document.createElement('option');
-      captureOpt.value = '__capture__';
-      setCanvasText(captureOpt, () => t('💾 另存当前画布为配置...'));
-      sel.append(captureOpt);
+      // Populate Global list (Radio / Exclusive)
+      if (globalList) {
+        globalList.replaceChildren();
+        if (!globalProfiles.length) {
+          const empty = document.createElement('div');
+          empty.className = 'hpp-empty';
+          setCanvasText(empty, () => t('暂无已保存的全局配置方案'));
+          globalList.append(empty);
+        } else {
+          for (const p of globalProfiles) {
+            const isActive = p.active || activeIds.includes(p.profileId);
+            const item = document.createElement('label');
+            item.className = `hpp-item ${isActive ? 'active' : ''}`;
 
-      const manageOpt = document.createElement('option');
-      manageOpt.value = '__manage__';
-      setCanvasText(manageOpt, () => t('⚙ 模块资源与配置管理...'));
-      sel.append(manageOpt);
+            const radio = document.createElement('input');
+            radio.type = 'radio';
+            radio.name = 'hpp-global-radio';
+            radio.value = p.profileId;
+            radio.checked = isActive;
+            radio.disabled = Boolean(this.profileOperationPending);
+            radio.addEventListener('change', async (e) => {
+              if (e.target.checked && !isActive) {
+                await this.switchProfile(p.profileId);
+              }
+            });
+
+            const info = document.createElement('div');
+            info.className = 'hpp-item-info';
+            const titleRow = document.createElement('span');
+            titleRow.className = 'hpp-item-title';
+            titleRow.textContent = `${p.title || p.id} v${p.version}`;
+            const descRow = document.createElement('span');
+            descRow.className = 'hpp-item-desc';
+            const modCount = p.modules?.length || 0;
+            setCanvasText(descRow, () => t('{count} 模块 · ID: {id}', { count: modCount, id: p.profileId.slice(0, 10) }));
+            info.append(titleRow, descRow);
+
+            const badge = document.createElement('span');
+            badge.className = `hpp-item-badge ${isActive ? 'active' : ''}`;
+            setCanvasText(badge, () => isActive ? t('● 生效中') : t('未生效'));
+
+            item.append(radio, info, badge);
+            globalList.append(item);
+          }
+        }
+      }
+
+      // Populate Local list (Checkbox / Coexist)
+      if (localList) {
+        localList.replaceChildren();
+        if (!localProfiles.length) {
+          const empty = document.createElement('div');
+          empty.className = 'hpp-empty';
+          setCanvasText(empty, () => t('暂无局部配置方案'));
+          localList.append(empty);
+        } else {
+          for (const p of localProfiles) {
+            const isActive = p.active || activeIds.includes(p.profileId);
+            const item = document.createElement('label');
+            item.className = `hpp-item ${isActive ? 'active' : ''}`;
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'hpp-checkbox';
+            checkbox.value = p.profileId;
+            checkbox.checked = isActive;
+            checkbox.disabled = Boolean(this.profileOperationPending);
+            checkbox.addEventListener('change', async (e) => {
+              if (e.target.checked) {
+                await this.switchProfile(p.profileId);
+              } else {
+                await this.deactivateProfile(p.profileId);
+              }
+            });
+
+            const info = document.createElement('div');
+            info.className = 'hpp-item-info';
+            const titleRow = document.createElement('span');
+            titleRow.className = 'hpp-item-title';
+            titleRow.textContent = `${p.title || p.id} v${p.version}`;
+            const descRow = document.createElement('span');
+            descRow.className = 'hpp-item-desc';
+            const modCount = p.modules?.length || 0;
+            setCanvasText(descRow, () => (p.groupId ? t('[组: {id}] ', { id: p.groupId }) : '') + t('{count} 模块 · ID: {id}', { count: modCount, id: p.profileId.slice(0, 10) }));
+            info.append(titleRow, descRow);
+
+            const badge = document.createElement('span');
+            badge.className = `hpp-item-badge ${isActive ? 'active' : ''}`;
+            setCanvasText(badge, () => isActive ? t('● 生效中') : t('未生效'));
+
+            item.append(checkbox, info, badge);
+            localList.append(item);
+          }
+        }
+      }
     } catch (_) {}
   }
 
+  setProfileOperationBusy(pending) {
+    this.profileOperationPending = pending;
+    for (const input of $('hud-profile-popover')?.querySelectorAll('input') || []) input.disabled = pending;
+    $('hud-profile-popover')?.setAttribute('aria-busy', String(pending));
+  }
+
+  async currentProfileResources() {
+    const response = await fetch('/manage/api/resources', { signal: AbortSignal.timeout(30000) });
+    const data = await response.json();
+    if (!response.ok) throw new Error(errorText(data));
+    return data;
+  }
+
   async switchProfile(profileId) {
+    if (this.profileOperationPending) return false;
+    this.setProfileOperationBusy(true);
     const csrf = window.hubCanvas?.state?.data?.csrfToken || '';
     try {
+      const current = await this.currentProfileResources();
+      const selected = current.profiles.find(profile => profile.profileId === profileId);
+      if (!selected) throw new Error(t('配置方案已不可用，请重新选择'));
+      const active = current.profiles.filter(profile => profile.active || current.activeProfileIds?.includes(profile.profileId));
+      // Local checkboxes add one recipe. Global radio selection replaces only
+      // active global recipes; conflicting local references stay visible in review.
+      const replaceProfileIds = selected.scope === 'global'
+        ? active.filter(profile => profile.scope === 'global' && profile.profileId !== profileId).map(profile => profile.profileId)
+        : [];
       const previewRes = await fetch('/manage/api/resources/profiles/preview', {
-        method: 'POST',
+        method: 'POST', signal: AbortSignal.timeout(30000),
         headers: { 'Content-Type': 'application/json', 'X-Management-Token': csrf },
-        body: JSON.stringify({ profileId })
+        body: JSON.stringify({ profileId, replaceProfileIds, expectedRevision: current.revision })
       });
       const previewData = await previewRes.json();
-      if (!previewRes.ok) throw new Error(previewData.message || previewData.error || t('配置切换失败'));
-
+      if (!previewRes.ok) throw new Error(errorText(previewData));
       const review = previewData.review;
-      if (review.blocked || (review.requiresStop && review.requiresStop.length > 0) || (review.conflicts && review.conflicts.length > 0) || (review.missingModules && review.missingModules.length > 0)) {
+      if (review.blocked || review.requiresStop?.length || review.conflicts?.length || review.missingModules?.length) {
         window.hubCanvas?.toast?.(t('切换此配置需确认受影响实例，已为您打开预览面板'), 'neutral');
         $('btn-resource-console')?.click();
         window.resourceConsole?.selectTab('configurations');
         window.resourceConsole?.showReview('configuration', previewData);
-      } else {
-        const applyRes = await fetch('/manage/api/resources/profiles/apply', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Management-Token': csrf },
-          body: JSON.stringify({ reviewId: previewData.reviewId, accepted: true })
-        });
-        const applyData = await applyRes.json();
-        if (!applyRes.ok) throw new Error(applyData.message || applyData.error || t('配置切换失败'));
-
-        window.hubCanvas?.toast?.(t('已成功切换生效配置：{title}', { title: previewData.profile?.title || profileId }), 'success');
-        window.dispatchEvent(new CustomEvent('world-hub:resources-changed'));
+        return false;
       }
+      const applyRes = await fetch('/manage/api/resources/profiles/apply', {
+        method: 'POST', signal: AbortSignal.timeout(30000),
+        headers: { 'Content-Type': 'application/json', 'X-Management-Token': csrf },
+        body: JSON.stringify({ reviewId: previewData.reviewId, accepted: true })
+      });
+      const applyData = await applyRes.json();
+      if (!applyRes.ok) throw new Error(errorText(applyData));
+      window.hubCanvas?.toast?.(t('已成功切换生效配置：{title}', { title: selected.title || selected.id }), 'success');
+      window.dispatchEvent(new CustomEvent('world-hub:resources-changed'));
+      return true;
+    } catch (error) {
+      window.hubCanvas?.toast?.(error.message || t('配置切换失败'), 'error');
+      return false;
+    } finally {
+      this.setProfileOperationBusy(false);
+      await this.updateProfileSwitcher();
+    }
+  }
+
+  async deactivateProfile(profileId) {
+    if (this.profileOperationPending) return false;
+    this.setProfileOperationBusy(true);
+    const csrf = window.hubCanvas?.state?.data?.csrfToken || '';
+    try {
+      const current = await this.currentProfileResources();
+      const res = await fetch('/manage/api/resources/profiles/deactivate', {
+        method: 'POST', signal: AbortSignal.timeout(30000),
+        headers: { 'Content-Type': 'application/json', 'X-Management-Token': csrf },
+        body: JSON.stringify({ profileIds: [profileId], accepted: true, expectedRevision: current.revision })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(errorText(data));
+      window.hubCanvas?.toast?.(t('配置已取消生效；实例仍保留'), 'success');
+      window.dispatchEvent(new CustomEvent('world-hub:resources-changed'));
+      return true;
     } catch (err) {
-      window.hubCanvas?.toast?.(err.message || t('配置切换失败'), 'error');
-      void this.updateProfileSwitcher();
+      window.hubCanvas?.toast?.(t('取消生效失败: {error}', { error: err.message || '' }), 'error');
+      return false;
+    } finally {
+      this.setProfileOperationBusy(false);
+      await this.updateProfileSwitcher();
     }
   }
 
@@ -5861,14 +6355,14 @@ export class CanvasModesController {
 
   layoutClustered(programs = this.filteredPrograms(), mode = this.mode) {
     if (!programs || !programs.length) return false;
-    const groups = (this.data.groups || []).filter(g => (g.memberProgramIds || []).some(id => programs.some(p => p.programId === id)));
+    const groups = canvasGroupViews(this.data.groups || []).filter(g => g.memberProgramIds.some(id => programs.some(p => p.programId === id)));
     if (!groups.length) return false;
 
     // Pass 1: 组内聚类
     const clusters = [];
     const assignedIds = new Set();
     groups.forEach(g => {
-      const members = programs.filter(p => (g.memberProgramIds || []).includes(p.programId));
+      const members = programs.filter(p => g.memberProgramIds.includes(p.programId) && !assignedIds.has(p.programId));
       if (members.length > 0) {
         clusters.push({ kind: 'group', id: g.id, title: g.title, programs: members });
         members.forEach(m => assignedIds.add(m.programId));
@@ -5971,12 +6465,13 @@ export class CanvasModesController {
     container.classList.remove('hidden');
 
     if (this.groupFilter !== 'all') return;
-    const groups = this.data.groups || [];
+    const groups = canvasGroupViews(this.data.groups || []);
     if (!groups.length) return;
 
     const programs = this.filteredPrograms() || [];
 
-    for (const group of groups) {
+    const headers = [];
+    for (const [groupIndex, group] of groups.entries()) {
       const members = programs.filter(p => (group.memberProgramIds || []).includes(p.programId));
       if (!members.length) continue;
 
@@ -6010,11 +6505,14 @@ export class CanvasModesController {
 
       const padX = 42, padY = 36, headerH = 38;
       const boxX = minX - padX;
-      const boxY = minY - padY - headerH;
+      const baseBoxY = minY - padY - headerH;
       const boxW = (maxX - minX) + padX * 2;
-      const boxH = (maxY - minY) + padY * 2 + headerH;
+      // Distinct or partly overlapping groups may still share a bounding box.
+      // Stack their headers above the cards, without moving any module card.
+      const boxY = canvasGroupHeaderY(headers, boxX + 8, baseBoxY + 8, boxW - 16, headerH - 8) - 8;
+      const boxH = (maxY - minY) + padY * 2 + headerH + baseBoxY - boxY;
 
-      const isSelected = this.selectedGroupId === group.id;
+      const isSelected = group.displayGroupIds.includes(this.selectedGroupId);
 
       const gBox = svgEl('g', {
         class: `cmn-group-container ${isSelected ? 'selected' : ''}`,
@@ -6057,9 +6555,17 @@ export class CanvasModesController {
         fill: isSelected ? '#ffffff' : '#00d2b4',
         'font-size': '12',
         'font-weight': '700',
-        'font-family': 'var(--sans)'
+        'font-family': 'var(--sans)',
+        'clip-path': `url(#cmn-group-title-${groupIndex})`
       });
-      setCanvasText(titleText, () => (`📦 ${group.title || group.id} (${t('{count} 个成员', { count: members.length })})`));
+      const fullTitle = () => (`📦 ${group.displayTitle} (${t('{count} 个成员', { count: members.length })})`);
+      setCanvasText(titleText, fullTitle);
+      const titleClip = svgEl('clipPath', { id: `cmn-group-title-${groupIndex}` });
+      titleClip.append(svgEl('rect', { x: String(boxX + 22), y: String(boxY + 8), width: String(Math.max(24, boxW - 170)), height: String(headerH - 8) }));
+      gBox.append(titleClip);
+      const tooltip = svgEl('title', {});
+      setCanvasText(tooltip, fullTitle);
+      headerG.append(tooltip);
 
       const manageBadge = svgEl('text', {
         x: String(boxX + boxW - 22),
@@ -6074,7 +6580,7 @@ export class CanvasModesController {
       headerG.append(headerBg, titleText, manageBadge);
       headerG.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.selectGroup(group.id);
+        this.selectGroup(group.displayGroupIds.includes(this.selectedGroupId) ? this.selectedGroupId : group.id);
       });
 
       gBox.append(headerG);
@@ -7139,6 +7645,7 @@ export class CanvasModesController {
 
     this.updateGroupActionButtons();
     this.updateModeUI();
+    this.updateGroupFilterOptions();
     void this.updateProfileSwitcher();
 
     this.render();
@@ -7674,14 +8181,14 @@ export class CanvasModesController {
         await fetch('/manage/api/groups/save', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-Management-Token': window.hubCanvas?.state?.data?.csrfToken || '' },
-          body: JSON.stringify({ group: g, expectedRevision: g.revision })
+          body: JSON.stringify({ group: canvasGroupInput(g), expectedRevision: g.revision })
         });
       } else if (g.id !== groupId && isMember) {
         g.memberProgramIds = (g.memberProgramIds || []).filter(id => id !== programId);
         await fetch('/manage/api/groups/save', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-Management-Token': window.hubCanvas?.state?.data?.csrfToken || '' },
-          body: JSON.stringify({ group: g, expectedRevision: g.revision })
+          body: JSON.stringify({ group: canvasGroupInput(g), expectedRevision: g.revision })
         });
       }
     }
@@ -10437,7 +10944,7 @@ export class CanvasModesController {
           'Content-Type': 'application/json',
           'X-Management-Token': window.hubCanvas?.state?.data?.csrfToken || ''
         },
-        body: JSON.stringify(group ? { group: { ...group, startupPlan: structuredClone(plan) }, expectedRevision: group.revision }
+        body: JSON.stringify(group ? { group: { ...canvasGroupInput(group), startupPlan: structuredClone(plan) }, expectedRevision: group.revision }
           : { plan, expectedRevision: plan.revision })
       });
       const result = await res.json();
