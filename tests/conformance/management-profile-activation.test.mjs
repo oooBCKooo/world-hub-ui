@@ -94,6 +94,8 @@ test('popover exposes dialog semantics and all new module/group descriptors use 
   const html = await readFile(new URL('../../src/management/console.html', import.meta.url), 'utf8');
   assert.match(html, /id="hud-profile-switcher" aria-haspopup="dialog"[^>]*aria-controls="hud-profile-popover"/u);
   assert.match(source, /profileTrigger\.focus\(\)/u);
+  const raised = /#detached-hud-group:has\(#hud-profile-switcher\[aria-expanded="true"\]\)\s*\{\s*z-index:\s*80;/u;
+  assert.match(source, raised); assert.match(html, raised);
   assert.doesNotMatch(source, /descRow\.textContent = `[^`]*模块/u);
   assert.doesNotMatch(source, /Handle legacy select element/u);
 });

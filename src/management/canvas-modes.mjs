@@ -532,6 +532,11 @@ export class CanvasModesController {
         color: #fff;
       }
 
+      /* Raise only the open profile panel above nonmodal canvas docks. */
+      #detached-hud-group:has(#hud-profile-switcher[aria-expanded="true"]) {
+        z-index: 80;
+      }
+
       /* 配置方案多选生效浮层组件 (Popover) */
       .hud-profile-switcher-wrap {
         position: relative;
