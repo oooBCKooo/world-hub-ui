@@ -1,0 +1,12 @@
+node_modules/
+.local/
+.artifacts/
+*.tgz
+*.log
+
+# Retired migration references are local evidence, not active project source.
+reference-tests/
+scripts/legacy/
+examples/
+tools/launcher/
+docs/reference/
