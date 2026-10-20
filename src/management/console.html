@@ -538,8 +538,7 @@
     .detached-hud-panel .hud-profile-select,
     .detached-hud-panel .hud-btn,
     .detached-hud-panel #canvas-language,
-    .detached-hud-panel #hud-group-filter,
-    .detached-hud-panel #hud-profile-switcher {
+    .detached-hud-panel #hud-group-filter {
       appearance: none !important;
       -webkit-appearance: none !important;
       -moz-appearance: none !important;
@@ -570,6 +569,243 @@
     }
     .detached-hud-panel select option {
       background: #0d1522;
+      color: #fff;
+    }
+
+    /* 配置方案多选生效浮层组件 (Popover) */
+    .hud-profile-switcher-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+    .hud-profile-trigger-btn {
+      appearance: none !important;
+      -webkit-appearance: none !important;
+      background: rgba(0, 210, 180, 0.08) !important;
+      border: 1px solid rgba(0, 210, 180, 0.3) !important;
+      border-radius: 6px !important;
+      padding: 3px 8px !important;
+      color: #e0f2fe !important;
+      font-size: 11px !important;
+      font-weight: 600 !important;
+      cursor: pointer !important;
+      outline: none !important;
+      transition: all 0.15s ease !important;
+      max-width: 260px !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 5px !important;
+    }
+    .hud-profile-trigger-btn:hover {
+      background: rgba(0, 210, 180, 0.18) !important;
+      border-color: rgba(0, 210, 180, 0.6) !important;
+      box-shadow: 0 0 10px rgba(0, 210, 180, 0.25) !important;
+      color: #fff !important;
+    }
+    .hud-profile-trigger-btn[aria-expanded="true"] {
+      background: rgba(0, 210, 180, 0.22) !important;
+      border-color: var(--teal) !important;
+      box-shadow: 0 0 12px var(--teal-glow) !important;
+      color: #fff !important;
+    }
+    .hud-profile-trigger-btn[aria-expanded="true"] .hud-profile-chevron {
+      transform: rotate(180deg);
+    }
+    .hud-profile-pill-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+      text-align: left;
+    }
+    .hud-profile-chevron {
+      flex-shrink: 0;
+      color: var(--teal);
+      transition: transform 0.2s ease;
+    }
+    .hud-profile-popover {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      width: 350px;
+      background: rgba(13, 21, 34, 0.97);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(0, 210, 180, 0.35);
+      border-radius: 10px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75), 0 0 18px rgba(0, 210, 180, 0.18);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: hppFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes hppFadeIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .hpp-header {
+      padding: 10px 12px 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .hpp-title-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 3px;
+    }
+    .hpp-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .hpp-badge {
+      font-size: 10px;
+      font-weight: 700;
+      background: rgba(0, 210, 180, 0.15);
+      color: var(--teal);
+      border: 1px solid rgba(0, 210, 180, 0.4);
+      border-radius: 10px;
+      padding: 1px 7px;
+    }
+    .hpp-subtitle {
+      font-size: 10px;
+      color: #94a3b8;
+      line-height: 1.3;
+    }
+    .hpp-body {
+      max-height: 380px;
+      overflow-y: auto;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .hpp-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 2px 2px 5px;
+    }
+    .hpp-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #cbd5e1;
+    }
+    .hpp-section-hint {
+      font-size: 9.5px;
+      color: #64748b;
+    }
+    .hpp-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .hpp-empty {
+      padding: 8px 10px;
+      font-size: 10.5px;
+      color: #64748b;
+      font-style: italic;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 6px;
+    }
+    .hpp-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      cursor: pointer;
+      transition: all 0.12s ease;
+      user-select: none;
+    }
+    .hpp-item:hover {
+      background: rgba(0, 210, 180, 0.08);
+      border-color: rgba(0, 210, 180, 0.25);
+    }
+    .hpp-item.active {
+      background: rgba(0, 210, 180, 0.12);
+      border-color: rgba(0, 210, 180, 0.4);
+    }
+    .hpp-item input[type="radio"],
+    .hpp-item input[type="checkbox"] {
+      cursor: pointer;
+      accent-color: var(--teal, #00d2b4);
+      margin: 0;
+      flex-shrink: 0;
+      width: 14px;
+      height: 14px;
+    }
+    .hpp-item-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+    .hpp-item-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #e2e8f0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .hpp-item-desc {
+      font-size: 9.5px;
+      color: #94a3b8;
+      font-family: var(--mono);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .hpp-item-badge {
+      font-size: 9.5px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      background: rgba(255, 255, 255, 0.05);
+      color: #64748b;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .hpp-item-badge.active {
+      background: rgba(16, 185, 129, 0.18);
+      color: #34d399;
+      border-color: rgba(16, 185, 129, 0.4);
+    }
+    .hpp-footer {
+      padding: 8px 10px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+    .hpp-action-btn {
+      appearance: none;
+      -webkit-appearance: none;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      color: #94a3b8;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 5px 8px;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .hpp-action-btn:hover {
+      background: rgba(0, 210, 180, 0.12);
+      border-color: rgba(0, 210, 180, 0.35);
       color: #fff;
     }
 
@@ -1056,11 +1292,49 @@
 
   <!-- Detached Sub-HUD: Module Group Filter & Perspective Toggle (Left below top-hud) -->
   <div class="detached-hud-panel detached-hud-left" id="detached-hud-group" aria-label="本地配置范围选择栏" data-i18n-aria-label="本地配置范围选择栏">
-    <div class="hud-profile-switcher-wrap" id="hud-profile-switcher-wrap" title="选择或切换生效的配置方案" data-i18n-title="选择或切换生效的配置方案">
-      <label class="sr-only" for="hud-profile-switcher" data-i18n="配置切换">配置切换</label>
-      <select class="hud-group-select hud-profile-select" id="hud-profile-switcher" aria-label="切换生效配置" data-i18n-aria-label="切换生效配置">
-        <option value="" data-i18n="📋 默认运行配置">📋 默认运行配置</option>
-      </select>
+    <div class="hud-profile-switcher-wrap" id="hud-profile-switcher-wrap" title="管理当前生效的全局与局部配置方案" data-i18n-title="管理当前生效的全局与局部配置方案">
+      <button type="button" class="hud-profile-trigger-btn" id="hud-profile-switcher" aria-haspopup="dialog" aria-expanded="false" aria-controls="hud-profile-popover" aria-label="管理当前生效配置" data-i18n-aria-label="管理当前生效配置">
+        <span class="hud-profile-pill-text" id="hud-profile-pill-text" data-i18n="📋 默认运行配置 (无保存方案)">📋 默认运行配置 (无保存方案)</span>
+        <svg class="hud-profile-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none">
+          <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+
+      <!-- Popover Menu -->
+      <div class="hud-profile-popover" id="hud-profile-popover" role="dialog" aria-modal="false" aria-label="配置方案生效管理" data-i18n-aria-label="配置方案生效管理" style="display: none;">
+        <div class="hpp-header">
+          <div class="hpp-title-box">
+            <span class="hpp-title" data-i18n="配置方案生效管理">配置方案生效管理</span>
+            <span class="hpp-badge" id="hpp-active-count">0 项生效</span>
+          </div>
+          <div class="hpp-subtitle" data-i18n="全局方案单选互斥 · 局部方案可多选勾选叠加生效">全局方案单选互斥 · 局部方案可多选勾选叠加生效</div>
+        </div>
+
+        <div class="hpp-body">
+          <!-- Section 1: Global Configurations (Radio / Exclusive) -->
+          <div class="hpp-section">
+            <div class="hpp-section-header">
+              <span class="hpp-section-title" data-i18n="🌐 全局配置 (单选)">🌐 全局配置 (单选)</span>
+              <span class="hpp-section-hint" data-i18n="整盘拓扑方案">整盘拓扑方案</span>
+            </div>
+            <div class="hpp-list" id="hpp-global-list"></div>
+          </div>
+
+          <!-- Section 2: Local Configurations (Checkboxes / Multi) -->
+          <div class="hpp-section">
+            <div class="hpp-section-header">
+              <span class="hpp-section-title" data-i18n="📁 局部配置 (多选勾选)">📁 局部配置 (多选勾选)</span>
+              <span class="hpp-section-hint" data-i18n="所选实例群方案，可叠加生效">所选实例群方案，可叠加生效</span>
+            </div>
+            <div class="hpp-list" id="hpp-local-list"></div>
+          </div>
+        </div>
+
+        <div class="hpp-footer">
+          <button type="button" class="hpp-action-btn" id="hpp-btn-capture" data-i18n="💾 另存当前画布为配置...">💾 另存当前画布为配置...</button>
+          <button type="button" class="hpp-action-btn" id="hpp-btn-console" data-i18n="⚙ 模块资源与配置管理...">⚙ 模块资源与配置管理...</button>
+        </div>
+      </div>
     </div>
     <div class="hud-divider-v"></div>
     <select class="hud-group-select" id="hud-group-filter" aria-label="本地配置范围筛选" data-i18n-aria-label="本地配置范围筛选">
