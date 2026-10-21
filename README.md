@@ -6,6 +6,10 @@ World Hub 的独立界面项目。提供通讯拓扑、手动工作台、模块�
 
 [Hub 项目](https://github.com/oooBCKooo/world-hub) · [界面操作约定](docs/interface-ux.md) · [手动通讯工作台](docs/specs/manual-workbench.md)
 
+## 0.1.2 更新
+
+项目源码与文档改用 [Apache License 2.0](LICENSE)，版权声明见 [NOTICE](NOTICE)。npm 元数据及项目描述同步更新。社区作品仍采用作者各自声明的许可证。
+
 ## 0.1.1 更新
 
 配置方案使用顶部浮层管理：全局方案单选，局部方案可勾选叠加；冲突时进入审阅，不自动取消其他局部配置。修复配置与分组标题重叠、重复筛选和自动排版，并保留原组身份。建议与 World Hub 0.22.0 一起使用。
@@ -67,4 +71,4 @@ node --test tests/proxy/hub-contract.test.mjs
 
 管理界面读取 `/manage/api/state` 的 `transport.path`、`csrfToken` 和通讯诊断，并调用 `/manage/api/` 下的管理资源；这些 HTTP／WS 契约属于 Hub。修改界面不改变 Hub 数据、ACL 或线协议。
 
-许可：MIT。
+许可：[Apache License 2.0](LICENSE)。版权声明：[NOTICE](NOTICE)。
