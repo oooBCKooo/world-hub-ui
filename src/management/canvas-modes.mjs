@@ -12128,7 +12128,7 @@ export class CanvasModesController {
       // Metadata tags (Author, License, Platform)
       const metaRow = document.createElement('div');
       metaRow.className = 'ws-tag-row';
-      for (const text of [() => `👤 @${activeEntry.owner?.username || t('官方团队')}`, () => `⚖️ ${activeEntry.license || 'MIT'}`, () => `💻 ${(activeEntry.platforms || []).join('/') || t('跨平台')}`]) {
+      for (const text of [() => `👤 @${activeEntry.owner?.username || t('官方团队')}`, () => `⚖️ ${activeEntry.license || t('未声明许可')}`, () => `💻 ${(activeEntry.platforms || []).join('/') || t('跨平台')}`]) {
         const tag = document.createElement('span'); tag.className = 'ws-tag ws-tag-meta'; setCanvasText(tag, text); metaRow.append(tag);
       }
       body.append(metaRow);
@@ -12401,7 +12401,7 @@ export class CanvasModesController {
           </div>
           <div style="background:rgba(0,0,0,0.2); padding:8px 12px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
             <div style="color:var(--muted); margin-bottom:2px;">${canvasLabel(() => (t('开源许可证')))}</div>
-            <div style="color:#fff; font-weight:600;">⚖️ ${htmlText(entry.license || 'MIT')}</div>
+            <div style="color:#fff; font-weight:600;">⚖️ ${htmlText(entry.license || t('未声明许可'))}</div>
           </div>
           <div style="background:rgba(0,0,0,0.2); padding:8px 12px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
             <div style="color:var(--muted); margin-bottom:2px;">${canvasLabel(() => (t('支持平台')))}</div>

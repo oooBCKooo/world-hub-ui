@@ -6,6 +6,10 @@ An independent interface project for World Hub: communication topology, a manual
 
 [Hub project](https://github.com/oooBCKooo/world-hub) · [Interface conventions](docs/interface-ux.md#english) · [Manual workbench](docs/specs/manual-workbench.md)
 
+## Changes in 0.1.2
+
+Project source and documentation now use the [Apache License 2.0](LICENSE), with attribution in [NOTICE](NOTICE). npm metadata and the project description are updated. Community works retain the licenses declared by their authors.
+
 ## Changes in 0.1.1
 
 The profile popover supports one global selection and multiple local profiles. Conflicts open the existing review instead of silently deactivating other local configurations. Duplicate group headers, filters and layout are corrected while original group identities remain available. Recommended with World Hub 0.22.0.
@@ -60,4 +64,4 @@ For an optional live contract test, set `WORLD_HUB_ENTRY` to the absolute path o
 
 The management interface reads `transport.path`, `csrfToken`, and diagnostics from `/manage/api/state`, then uses the management resources under `/manage/api/`. These HTTP and WebSocket contracts belong to the Hub. Editing this UI does not change Hub persistence, ACL, or wire protocol.
 
-MIT license.
+Licensed under the [Apache License 2.0](LICENSE). Attribution: [NOTICE](NOTICE).

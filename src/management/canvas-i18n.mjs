@@ -1412,6 +1412,7 @@ Object.assign(CANVAS_EN_LABELS, {
   '{count} 模块 · ID: {id}': '{count} modules · ID: {id}',
   '[组: {id}] ': '[Group: {id}] ',
   '配置方案已不可用，请重新选择': 'This configuration is no longer available. Choose another one.',
+  '未声明许可': 'License not declared',
   '配置方案生效管理': 'Configuration Profile Activation',
   '管理当前生效配置': 'Manage active configurations',
   '管理当前生效的全局与局部配置方案': 'Manage active global and local configuration profiles',
